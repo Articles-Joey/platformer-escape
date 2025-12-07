@@ -1,7 +1,7 @@
 import LobbyPage from "."
 
 export const metadata = {
-    title: `Maze Lobby`,
+    title: `Platformer Escape Lobby`,
 }
 
 export default function Home() {

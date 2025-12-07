@@ -211,10 +211,8 @@ export default function GamePage() {
 
                 <GameCanvas
                     key={sceneKey}
-                    gameState={gameState}
-                    // playerData={playerData}
-                    // setPlayerData={setPlayerData}
-                    players={players}
+                    // gameState={gameState}
+                    // players={players}
                 />
 
             </div>

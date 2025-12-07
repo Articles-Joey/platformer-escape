@@ -106,9 +106,9 @@ function GameCanvas(props) {
 
                 <Debug>
 
-                    <Player />
+                    {/* <Player /> */}
 
-                    <Star
+                    {/* <Star
                         position={[-25, 4, 0]}
                         scale={2}
                     />
@@ -116,7 +116,7 @@ function GameCanvas(props) {
                     <MovingPlatform
                         position={[-30, 0, 0]}
                         args={[25, 1, 2.5]}
-                    />
+                    /> */}
 
                     <group>
                         <Platform
@@ -135,7 +135,7 @@ function GameCanvas(props) {
                         />
                     </group>
 
-                    <Platform
+                    {/* <Platform
                         position={[30, 0, 0]}
                         args={[25, 1, 2.5]}
                     />
@@ -163,7 +163,7 @@ function GameCanvas(props) {
                     <Platform
                         position={[55, 3, 0]}
                         args={[25, 1, 2.5]}
-                    />
+                    /> */}
 
                     {/* <Walls /> */}
 

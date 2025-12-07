@@ -3,7 +3,7 @@ import GamePage from "./play"
 // import metadataAppend from "util/metadataAppend"
 
 export const metadata = {
-    title: `Maze`,
+    title: `Platformer Escape`,
 }
 
 export default function Page() {

@@ -22,7 +22,7 @@ import SocketLogicHandler from "@/components/SocketLogicHandler";
 // });
 
 export const metadata = {
-  title: "Maze",
+  title: "Platformer Escape",
   description: "",
 };
 

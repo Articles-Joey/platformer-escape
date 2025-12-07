@@ -104,7 +104,7 @@ export default function LobbyPage() {
 
     return (
 
-        <div className="ice-slide-landing-page">
+        <div className="platformer-escape-landing-page">
 
             {showInfoModal &&
                 <InfoModal
