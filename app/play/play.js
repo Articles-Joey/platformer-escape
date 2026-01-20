@@ -118,7 +118,7 @@ export default function GamePage() {
 
         <div
             className={`platformer-escape-game-page ${isFullscreen && 'fullscreen'}`}
-            id="platformer-escape-game-page"
+            id="game-page"
         >
 
             <div className="menu-bar card card-articles p-1 justify-content-center">

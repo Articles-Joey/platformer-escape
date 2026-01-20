@@ -1,32 +1,34 @@
 {
   "name": "platformer-escape",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": false,
   "scripts": {
-    "dev": "next dev -p 3040",
-    "build": "next build",
+    "dev": "next dev --webpack -p 3040",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
+    "@articles-media/articles-dev-box": "^1.0.12",
+    "@articles-media/articles-gamepad-helper": "^0.0.5",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
-    "@mui/icons-material": "^7.3.6",
-    "@mui/material": "^7.3.6",
-    "@mui/material-nextjs": "^7.3.6",
+    "@mui/icons-material": "^7.3.7",
+    "@mui/material": "^7.3.7",
+    "@mui/material-nextjs": "^7.3.7",
     "@react-three/cannon": "^6.6.0",
     "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.4.2",
+    "@react-three/fiber": "^9.5.0",
     "axios": "^1.13.2",
-    "bootstrap": "^5.3.7",
+    "bootstrap": "^5.3.8",
     "classnames": "^2.5.1",
     "date-fns": "^4.1.0",
-    "next": "^16",
+    "next": "^16.1.4",
     "nipplejs": "^0.10.2",
-    "react": "^19",
+    "react": "^19.2.3",
     "react-bootstrap": "^2.10.10",
     "react-countdown": "^2.3.6",
-    "react-dom": "^19",
+    "react-dom": "^19.2.3",
     "react-hotkeys-hook": "^5.1.0",
     "sass": "^1.94.2",
     "socket.io-client": "^4.8.1",
@@ -36,6 +38,6 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "eslint": "^9",
-    "eslint-config-next": "^16"
+    "eslint-config-next": "^16.1.4"
   }
 }

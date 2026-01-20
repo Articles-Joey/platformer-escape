@@ -51,7 +51,7 @@ export default function LeftPanelContent(props) {
                         <div>Players: {0}/4</div>
                     </div>
 
-                    {!socket?.connected &&
+                    {/* {!socket?.connected &&
                         <div
                             className=""
                         >
@@ -72,7 +72,7 @@ export default function LeftPanelContent(props) {
                             </div>
 
                         </div>
-                    }
+                    } */}
 
                     <Link
                         href={'/'}
@@ -95,7 +95,7 @@ export default function LeftPanelContent(props) {
                             if (isFullscreen) {
                                 exitFullscreen()
                             } else {
-                                requestFullscreen('maze-game-page')
+                                requestFullscreen('game-page')
                             }
                         }}
                     >
