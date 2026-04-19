@@ -18,20 +18,17 @@ export function Model(props) {
   const { nodes, materials } = useGraph(clone)
   const { actions } = useAnimations(animations, group)
 
-  const { previewConfig } = props
+  const { previewConfig, action } = props
 
   useEffect(() => {
+    if (!actions || !action) return
 
-    console.log("Actions", actions)
-    Object.values(actions).forEach((a) => a.stop());
-
-    if (props.action) {
-      actions[props.action].play();
-    } else {
-      actions[`Idle`].play();
+    const selectedAction = actions[action] || actions['Idle']
+    if (selectedAction) {
+      selectedAction.reset().fadeIn(0.2).play()
+      return () => selectedAction.fadeOut(0.2)
     }
-
-  }, [actions, props.action]);
+  }, [actions, action]);
 
   return (
     <group ref={group} {...props} dispose={null}>

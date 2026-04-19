@@ -1,269 +1,203 @@
 import { useFrame, useThree } from "@react-three/fiber"
-import { useSphere } from "@react-three/cannon"
-import { memo, useEffect, useRef, useState } from "react"
+import { RigidBody, CapsuleCollider, useRapier } from "@react-three/rapier"
+import { memo, useRef, useState } from "react"
 import { Vector3 } from "three"
-import * as THREE from 'three';
-import { useKeyboard } from "@/hooks/useKeyboard"
 
+import { useKeyboardStore } from "@/hooks/useKeyboard"
 import { Model as ModelKingMen } from "@/components/Models/King";
-
-import { useControllerStore } from '@/hooks/useControllerStore';
 import { useControlsStore, useGameStore } from "@/hooks/useGameStore";
 import { degToRad } from "three/src/math/MathUtils";
 import { Text } from "@react-three/drei";
 
-const JUMP_FORCE = 10;
-const SPEED = 6;
+const JUMP_FORCE = 20;
+const SPEED = 12;
+const STICK_VELOCITY = -5; // downward velocity applied when grounded to stick to moving platforms
 
 let lastLocation
 
+// Pre-allocate reusable vectors (avoids GC pressure every frame)
+const _cameraPos = new Vector3()
+const _cameraTarget = new Vector3()
+const _direction = new Vector3()
+const _frontVector = new Vector3()
+const _sideVector = new Vector3()
+const _playerLoc = new Vector3()
+
 function myToFixed(i, digits) {
     var pow = Math.pow(10, digits);
-
     return Math.floor(i * pow) / pow;
 }
 
 function Player(props) {
 
+    const rigidBodyRef = useRef()
     const playerModelRef = useRef()
+    const lastMoveRef = useRef("Right")
+    const actionRef = useRef("Idle")
 
-    // const { setPlayerData, teleportPlayer, setTeleportPlayer } = props;
-
-    const {
-        cameraMode, setCameraMode,
-        teleport, setTeleport,
-        setPlayerLocation,
-        maxHeight, setMaxHeight,
-        shift, setShift,
-        score, setScore
-    } = useGameStore()
-
-    const {
-        touchControls, setTouchControls
-    } = useControlsStore()
-
-    const { controllerState, setControllerState } = useControllerStore()
-
-    // Attach event listeners when the component mounts
-    useEffect(() => {
-
-        if (controllerState.axes && Math.abs(controllerState?.axes[0]) > 0.3) {
-
-            if (controllerState?.axes[0] > 0) {
-                api.position.set([-1, 5, 0]);
-            } else {
-                api.position.set([1, 5, 0]);
-            }
-
-        }
-
-    }, [controllerState]);
-
-    // useEffect(() => {
-
-    //     if (teleport) {
-
-    //         console.log("Teleport has been called!", teleport)
-    //         api.position.set(teleport[0], teleport[1], teleport[2]);
-    //         setTeleport(false)
-
-    //     }
-
-    // }, [teleport]);
-
-    const { moveBackward, moveForward, moveRight, moveLeft, jump, shift: isShifting, crouch } = useKeyboard()
-
+    // These only update when the value actually changes (infrequent),
+    // triggering a re-render to update the model's animation/rotation.
     const [lastMove, setLastMove] = useState("Right");
     const [action, setAction] = useState("Idle")
 
-    useEffect(() => {
-
-        if (moveRight) {
-            setLastMove("Right")
-            setAction("Walk");
-        }
-
-        if (moveLeft) {
-            setLastMove("Left")
-            setAction("Walk");
-        }
-
-        if (!moveLeft && !moveRight) {
-            setAction("Idle");
-        }
-
-    }, [moveRight, moveLeft])
-
     const { camera } = useThree()
+    const { rapier, world } = useRapier()
 
-    const [ref, api] = useSphere(() => ({
-        mass: 1,
-        args: [0.5],
-        position: [0, 2, 0],
-        userData: {
-            isPlayer: true
-        },
-        onCollide: (e) => {
-            console.log("Player collided with something!", e);
+    const isGrounded = () => {
+        const rb = rigidBodyRef.current
+        if (!rb) return false
+        const origin = rb.translation()
+        const ray = new rapier.Ray(
+            { x: origin.x, y: origin.y, z: origin.z },
+            { x: 0, y: -1, z: 0 }
+        )
+        const hit = world.castRay(ray, 3.5, true)
+        return hit !== null && hit.timeOfImpact < 3.5
+    }
 
-            if (e.body.userData.isEnemy) {
-                api.velocity.set(0, 0, 0);
-                api.position.set(
-                    0, 10, 0
-                );
-            }
+    const handleCollision = (e) => {
+        const otherData = e.other?.rigidBodyObject?.userData
 
-            if (e.body.userData.isStar) {
-                const currentScore = useGameStore.getState().score;
-                setScore(currentScore + 1)                
-                console.log("score", score)
-            }
+        if (otherData?.isEnemy) {
+            const rb = rigidBodyRef.current
+            if (!rb) return
+            rb.setLinvel({ x: 0, y: 0, z: 0 }, true)
+            rb.setTranslation({ x: 0, y: 10, z: 0 }, true)
+        }
 
-        },
-    }))
-
-    const material = new THREE.MeshPhysicalMaterial({
-        color: 'red',
-    });
-
-    const vel = useRef([0, 0, 0])
-    useEffect(() => {
-        api.velocity.subscribe((v) => vel.current = v)
-    }, [api.velocity])
-
-    const pos = useRef([0, 0, 0])
-    useEffect(() => {
-
-        api.position.subscribe((p) => {
-
-            pos.current = p
-
-            if (p[1] < -15) {
-                console.log("Y position below 0. Reset player.");
-
-                api.position.set(
-                    0, 10, 0
-                );
-
-                camera.lookAt(0, 0, -50);
-                api.velocity.set(0, 0, 0);
-            }
-
-            if (playerModelRef.current) {
-                playerModelRef.current.position.set(...p);
-            }
-
-        })
-
-    }, [api.position])
-
-    // useEffect(() => {
-    //     console.log("Shift", isShifting)
-    //     setShift(isShifting)
-    // }, [isShifting])
+        if (otherData?.isStar) {
+            const currentScore = useGameStore.getState().score;
+            useGameStore.getState().setScore(currentScore + 1)
+        }
+    }
 
     useFrame(() => {
+        const rb = rigidBodyRef.current
+        if (!rb) return
 
-        if (cameraMode == "Player") {
-            camera.position.copy(new Vector3(pos.current[0], pos.current[1] + 8, 50))
-            camera.lookAt(new Vector3(pos.current[0], pos.current[1], 0))
+        // Read all state imperatively — no React subscriptions, no re-renders
+        const kb = useKeyboardStore.getState()
+        const tc = useControlsStore.getState().touchControls
+        const gs = useGameStore.getState()
+
+        const pos = rb.translation()
+        const vel = rb.linvel()
+
+        // Fall reset
+        if (pos.y < -15) {
+            rb.setLinvel({ x: 0, y: 0, z: 0 }, true)
+            rb.setTranslation({ x: 0, y: 10, z: 0 }, true)
+            camera.lookAt(0, 0, -50);
+            return
         }
 
-        let posX = 0
-        if (pos.current[0]) {
-            posX = myToFixed(pos.current[0], 2)
+        // Update model position to match physics body
+        if (playerModelRef.current) {
+            playerModelRef.current.position.set(pos.x, pos.y, pos.z);
         }
 
-        // console.log(pos.current[1])
-        let posY = 0
-        if (pos.current[1]) {
-            posY = myToFixed(pos.current[1], 2)
+        // Update direction/action — only setState when value actually changes
+        const movingRight = kb.moveRight || tc.right
+        const movingLeft = kb.moveLeft || tc.left
+
+        if (movingRight) {
+            if (lastMoveRef.current !== "Right") { lastMoveRef.current = "Right"; setLastMove("Right") }
+            if (actionRef.current !== "Walk") { actionRef.current = "Walk"; setAction("Walk") }
+        } else if (movingLeft) {
+            if (lastMoveRef.current !== "Left") { lastMoveRef.current = "Left"; setLastMove("Left") }
+            if (actionRef.current !== "Walk") { actionRef.current = "Walk"; setAction("Walk") }
+        } else {
+            if (actionRef.current !== "Idle") { actionRef.current = "Idle"; setAction("Idle") }
         }
 
-        let posZ = 0
-        if (pos.current[2]) {
-            posZ = myToFixed(pos.current[2], 2)
+        // Camera follow (reuse pre-allocated vectors)
+        if (gs.cameraMode === "Player") {
+            _cameraPos.set(pos.x, pos.y + 8, 50)
+            camera.position.copy(_cameraPos)
+            _cameraTarget.set(pos.x, pos.y, 0)
+            camera.lookAt(_cameraTarget)
         }
 
-        // console.log(posX)
+        // Track location — only update store when position actually changes
+        let posX = myToFixed(pos.x || 0, 2)
+        let posY = myToFixed(pos.y || 0, 2)
+        let posZ = myToFixed(pos.z || 0, 2)
 
-        let newLocation = new Vector3(posX, posY, posZ)
-
-        if (JSON.stringify(lastLocation) !== JSON.stringify(newLocation)) {
-            // console.log(newLocation, lastLocation)
-            setPlayerLocation(newLocation)
-            lastLocation = newLocation
-        }
-        // else {
-        //     console.log("location unchanged")
-        // }
-
-        if (pos.current[1] > maxHeight) {
-            setMaxHeight(pos.current[1].toFixed(2))
+        if (!lastLocation || lastLocation.x !== posX || lastLocation.y !== posY || lastLocation.z !== posZ) {
+            lastLocation = { x: posX, y: posY, z: posZ }
+            _playerLoc.set(posX, posY, posZ)
+            useGameStore.setState({ playerLocation: _playerLoc })
         }
 
-        const direction = new Vector3()
+        if (pos.y > gs.maxHeight) {
+            useGameStore.setState({ maxHeight: pos.y.toFixed(2) })
+        }
 
-        const frontVector = new Vector3(
+        // Movement (reuse pre-allocated vectors)
+        _frontVector.set(
             0,
             0,
-            (moveBackward ? 1 : 0) - (moveForward ? 1 : 0)
+            (kb.moveBackward ? 1 : 0) - (kb.moveForward ? 1 : 0)
         )
 
-        const sideVector = new Vector3(
-            (moveLeft || touchControls.left ? 1 : 0) - (moveRight || touchControls.right ? 1 : 0),
+        _sideVector.set(
+            (movingLeft ? 1 : 0) - (movingRight ? 1 : 0),
             0,
             0,
         )
 
-        direction
-            .subVectors(frontVector, sideVector)
+        _direction
+            .subVectors(_frontVector, _sideVector)
             .normalize()
-            .multiplyScalar(SPEED * (shift ? 2 : 1))
-        // .applyEuler(camera.rotation)
+            .multiplyScalar(SPEED * (gs.shift ? 2 : 1))
 
-        api.velocity.set(direction.x, vel.current[1], direction.z)
+        rb.setLinvel({ x: _direction.x, y: vel.y, z: 0 }, true)
 
-        if ((jump || touchControls.jump) && Math.abs(vel.current[1]) < 0.05) {
+        // Ground check (once per frame)
+        const grounded = isGrounded()
 
-            console.log("Jump understood")
+        // Jump
+        if ((kb.jump || tc.jump) && grounded) {
+            rb.setLinvel({ x: vel.x, y: JUMP_FORCE, z: 0 }, true)
 
-            api.velocity.set(vel.current[0], JUMP_FORCE, vel.current[2])
-
-            if (
-                touchControls.jump
-                // ||
-                // touchControls.left
-                // ||
-                // touchControls.right
-            ) {
-                setTouchControls({
-                    ...touchControls,
+            if (tc.jump) {
+                useControlsStore.getState().setTouchControls({
+                    ...tc,
                     jump: false,
-                    // left: false,
-                    // right: false
                 })
             }
         }
-
+        // Platform stickiness: when grounded and not jumping, apply a constant
+        // downward velocity so the player stays glued to downward-moving platforms.
+        // The physics solver prevents the player from falling through static surfaces.
+        else if (grounded && vel.y < 1) {
+            const currentVel = rb.linvel()
+            if (currentVel.y > STICK_VELOCITY) {
+                rb.setLinvel({ x: currentVel.x, y: STICK_VELOCITY, z: currentVel.z }, true)
+            }
+        }
     })
 
     return (
         <group>
 
-            <mesh
-                ref={ref}
-                // {...props}
-                // position={position}
-                material={material}
+            <RigidBody
+                ref={rigidBodyRef}
+                position={[0, 5, 0]}
+                lockRotations
+                ccd
+                friction={0.05}
+                restitution={0}
+                linearDamping={0}
+                userData={{ isPlayer: true }}
+                onCollisionEnter={handleCollision}
             >
-                <sphereGeometry args={[0.5, 32, 32]} />
-
-            </mesh>
+                <CapsuleCollider args={[1.75, 1.1]} />
+            </RigidBody>
 
             <group ref={playerModelRef}>
 
-                <Text position={[0, 2, 0]}>
+                <Text position={[0, 5, 0]}>
                     {action}
                 </Text>
 
@@ -274,7 +208,7 @@ function Player(props) {
                         lastMove == "Right" ? degToRad(90) : degToRad(-90),
                         0
                     ]}
-                    position={[0, -0.5, 0]}
+                    position={[0, -3.25, 0]}
                     action={action}
                 />
             </group>

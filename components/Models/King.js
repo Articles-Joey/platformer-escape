@@ -22,23 +22,13 @@ export function Model(props) {
   const { previewConfig, action } = props
 
   useEffect(() => {
-
-    console.log("Actions", actions)
-
-    // actions[`Idle`].play();
-
     if (!actions || !action) return
 
-    // Object.values(actions).forEach((a) => a?.stop());
-
-    actions[action]?.stop();
-
-    if (action) {
-      actions[action]?.play();
-    } else {
-      actions[`Idle`]?.play();
+    const selectedAction = actions[action] || actions['Idle']
+    if (selectedAction) {
+      selectedAction.reset().fadeIn(0.2).play()
+      return () => selectedAction.fadeOut(0.2)
     }
-
   }, [actions, action]);
 
   return (

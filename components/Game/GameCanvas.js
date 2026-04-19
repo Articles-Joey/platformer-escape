@@ -5,7 +5,7 @@ import { Sky, useDetectGPU, useTexture, OrbitControls, Cylinder, QuadraticBezier
 
 import { NearestFilter, RepeatWrapping, TextureLoader, Vector3 } from "three";
 
-import { Debug, Physics, useBox, useSphere } from "@react-three/cannon";
+import { Physics, RigidBody, CuboidCollider } from "@react-three/rapier";
 import { degToRad } from "three/src/math/MathUtils";
 
 import { Model as ModelKingMen } from "@/components/Models/King";
@@ -102,45 +102,46 @@ function GameCanvas(props) {
                 rotation={[0, degToRad(-90), 0]}
             /> */}
 
-            <Physics gravity={[0, -8, 0]}>
+            <Physics
+                gravity={[0, -30, 0]}
+                debug
+            >
 
-                <Debug>
+                <Player />
 
-                    {/* <Player /> */}
-
-                    {/* <Star
+                {/* <Star
                         position={[-25, 4, 0]}
                         scale={2}
-                    />
-
-                    <MovingPlatform
-                        position={[-30, 0, 0]}
-                        args={[25, 1, 2.5]}
                     /> */}
 
-                    <group>
-                        <Platform
-                            position={[0, -10, 0]}
-                            args={[25, 1, 2.5]}
-                        />
+                <MovingPlatform
+                    position={[-30, 0, 0]}
+                    args={[25, 1, 2.5]}
+                />
 
-                        <Platform
-                            position={[0, 0, 0]}
-                            args={[25, 1, 2.5]}
-                        />
-
-                        <Platform
-                            position={[0, 10, 0]}
-                            args={[25, 1, 2.5]}
-                        />
-                    </group>
-
-                    {/* <Platform
-                        position={[30, 0, 0]}
+                <group>
+                    <Platform
+                        position={[0, -10, 0]}
                         args={[25, 1, 2.5]}
                     />
 
-                    <Star
+                    <Platform
+                        position={[0, 0, 0]}
+                        args={[25, 1, 2.5]}
+                    />
+
+                    <Platform
+                        position={[0, 10, 0]}
+                        args={[25, 1, 2.5]}
+                    />
+                </group>
+
+                <Platform
+                    position={[30, 0, 0]}
+                    args={[25, 1, 2.5]}
+                />
+
+                {/* <Star
                         position={[15, 4, 0]}
                         scale={2}
                     />
@@ -148,26 +149,24 @@ function GameCanvas(props) {
                     <Star
                         position={[25, 4, 0]}
                         scale={2}
-                    />
-
-                    <ModelKingMen
-                        scale={3}
-                        rotation={[0, degToRad(90), 0]}
-                        position={[0, 0.5, 0]}
-                    />
-
-                    <Enemy
-                        position={[30, 2.75, 0]}
-                    />
-
-                    <Platform
-                        position={[55, 3, 0]}
-                        args={[25, 1, 2.5]}
                     /> */}
 
-                    {/* <Walls /> */}
+                {/* <ModelKingMen
+                    scale={3}
+                    rotation={[0, degToRad(90), 0]}
+                    position={[0, 0.5, 0]}
+                /> */}
 
-                </Debug>
+                {/* <Enemy
+                        position={[30, 2.75, 0]}
+                    /> */}
+
+                <Platform
+                    position={[55, 3, 0]}
+                    args={[25, 1, 2.5]}
+                />
+
+                {/* <Walls /> */}
 
             </Physics>
 
@@ -179,64 +178,54 @@ export default memo(GameCanvas)
 
 function Platform({ args, position }) {
 
-    const [ref, api] = useBox(() => ({
-        mass: 0,
-        type: 'Static',
-        args: args,
-        position: position,
-    }))
-
     return (
-        <mesh ref={ref} castShadow>
-            <boxGeometry args={args} />
-            <meshStandardMaterial color="black" />
-        </mesh>
+        <RigidBody type="fixed" position={position} friction={0.05} restitution={0}>
+            <mesh
+            // castShadow
+            >
+                <boxGeometry args={args} />
+                <meshStandardMaterial color="black" />
+            </mesh>
+        </RigidBody>
     )
 
 }
 
 function MovingPlatform({ args, position }) {
-    const [ref, api] = useBox(() => ({
-        mass: 0,
-        type: 'Dynamic',
-        args: args,
-        position: position,
-    }));
+    const rigidBodyRef = useRef(null);
+    const directionRef = useRef(1);
+    const speed = 2;
 
-    const [direction, setDirection] = useState(1); // 1 for moving up, -1 for moving down
-    const speed = 0.05; // Speed of movement
-    const currentPosition = useRef(position); // Keep track of the current position
+    useFrame((_, delta) => {
+        if (!rigidBodyRef.current) return;
 
-    // Subscribe to position changes (only once)
-    useEffect(() => {
-        const unsubscribe = api.position.subscribe((pos) => {
-            currentPosition.current = pos;
+        const pos = rigidBodyRef.current.translation();
+
+        if (pos.y >= 10) directionRef.current = -1;
+        else if (pos.y <= -10) directionRef.current = 1;
+
+        const nextY = pos.y + speed * directionRef.current * delta;
+        rigidBodyRef.current.setNextKinematicTranslation({
+            x: pos.x,
+            y: nextY,
+            z: pos.z,
         });
-
-        return () => {
-            unsubscribe(); // Clean up the subscription when the component unmounts
-        };
-    }, [api.position]);
-
-    // Update position every frame
-    useFrame(() => {
-        const [x, y, z] = currentPosition.current;
-
-        // Reverse direction at limits
-        if (y >= 10) {
-            setDirection(-1);
-        } else if (y <= -10) {
-            setDirection(1);
-        }
-
-        // Update the position
-        api.position.set(x, y + speed * direction, z);
     });
 
     return (
-        <mesh ref={ref} castShadow>
-            <boxGeometry args={args} />
-            <meshStandardMaterial color="black" />
-        </mesh>
+        <RigidBody
+            ref={rigidBodyRef}
+            type="kinematicPosition"
+            position={position}
+            friction={0.05}
+            restitution={0}
+        >
+            <mesh
+            // castShadow
+            >
+                <boxGeometry args={args} />
+                <meshStandardMaterial color="black" />
+            </mesh>
+        </RigidBody>
     );
 }

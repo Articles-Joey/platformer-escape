@@ -1,54 +1,49 @@
 import { Model as ModelSpaceMen } from "@/components/Models/Spacesuit";
-import { useBox } from "@react-three/cannon";
+import { RigidBody, CuboidCollider } from "@react-three/rapier";
 import { useFrame } from "@react-three/fiber";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { degToRad } from "three/src/math/MathUtils";
 
 function Enemy({ args, position }) {
-    const [ref, api] = useBox(() => ({
-        mass: 0,
-        isTrigger: true,
-        args: [1, 4, 1],
-        position: position,
-        userData: {
-            isEnemy: true
-        },
-        onCollide: (e) => {
-            console.log("Player collided with an enemy!", e);
-        },
-    }));
+    const rigidBodyRef = useRef();
+    const directionRef = useRef(1);
+    const speed = 3;
+    const originalX = useRef(position[0]);
 
-    const [direction, setDirection] = useState(1); // 1 for moving right, -1 for moving left
-    const speed = 0.05; // Speed of movement
-    const originalX = useRef(position[0]); // Store the original X position
+    useFrame((_, delta) => {
+        if (!rigidBodyRef.current) return;
 
-    useFrame(() => {
-        api.position.subscribe(([x, y, z]) => {
-            // Calculate movement bounds relative to the original X position
-            const minX = originalX.current - 10;
-            const maxX = originalX.current + 10;
+        const pos = rigidBodyRef.current.translation();
 
-            // Reverse direction at the limits
-            if (x >= maxX) {
-                setDirection(-1); // Move left
-            } else if (x <= minX) {
-                setDirection(1); // Move right
-            }
+        const minX = originalX.current - 10;
+        const maxX = originalX.current + 10;
 
-            // Update the position relative to the original X position
-            api.position.set(x + speed * direction, y, z);
+        if (pos.x >= maxX) directionRef.current = -1;
+        else if (pos.x <= minX) directionRef.current = 1;
+
+        const nextX = pos.x + speed * directionRef.current * delta;
+        rigidBodyRef.current.setNextKinematicTranslation({
+            x: nextX,
+            y: pos.y,
+            z: pos.z,
         });
     });
 
     return (
-        <group ref={ref}>
+        <RigidBody
+            ref={rigidBodyRef}
+            type="kinematicPosition"
+            position={position}
+            userData={{ isEnemy: true }}
+        >
+            <CuboidCollider args={[0.5, 2, 0.5]} />
             <ModelSpaceMen
                 scale={3}
-                rotation={[0, (direction > 0 ? Math.PI / 2 : Math.PI / -2), 0]} // DegToRad(-90) simplified
+                rotation={[0, Math.PI / 2, 0]}
                 position={[0, -2, 0]}
                 action="Walk"
             />
-        </group>
+        </RigidBody>
     );
 }
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { create } from 'zustand'
 
 function actionByKey(key) {
 	const keyActionMap = {
@@ -7,9 +7,9 @@ function actionByKey(key) {
 		KeyA: 'moveLeft',
 		KeyD: 'moveRight',
 		Space: 'jump',
-        ShiftLeft: 'shift',
-        KeyC: 'crouch',
-        KeyV: 'cameraView',
+		ShiftLeft: 'shift',
+		KeyC: 'crouch',
+		KeyV: 'cameraView',
 		Digit1: 'dirt',
 		Digit2: 'grass',
 		Digit3: 'glass',
@@ -19,57 +19,34 @@ function actionByKey(key) {
 	return keyActionMap[key]
 }
 
-export const useKeyboard = () => {
-	const [actions, setActions] = useState({
-		moveForward: false,
-		moveBackward: false,
-		moveLeft: false,
-		moveRight: false,
-		jump: false,
-        shift: false,
-        crouch: false,
-        cameraView: false,
-		dirt: false,
-		grass: false,
-		glass: false,
-		wood: false,
-		log: false,
+// Zustand store — use getState() in useFrame for zero-cost reads,
+// or use as a hook for reactive subscriptions.
+export const useKeyboardStore = create(() => ({
+	moveForward: false,
+	moveBackward: false,
+	moveLeft: false,
+	moveRight: false,
+	jump: false,
+	shift: false,
+	crouch: false,
+	cameraView: false,
+	dirt: false,
+	grass: false,
+	glass: false,
+	wood: false,
+	log: false,
+}))
+
+if (typeof document !== 'undefined') {
+	document.addEventListener('keydown', (e) => {
+		const action = actionByKey(e.code)
+		if (action) useKeyboardStore.setState({ [action]: true })
 	})
-
-	const handleKeyDown = useCallback((e) => {
+	document.addEventListener('keyup', (e) => {
 		const action = actionByKey(e.code)
-        console.log("test")
-		if (action) {
-			setActions((prev) => {
-				return ({
-					...prev,
-					[action]: true
-				})
-			})
-		}
-	}, [])
-
-	const handleKeyUp = useCallback((e) => {
-		const action = actionByKey(e.code)
-        console.log("test")
-		if (action) {
-			setActions((prev) => {
-				return ({
-					...prev,
-					[action]: false
-				})
-			})
-		}
-	}, [])
-
-	useEffect(() => {
-		document.addEventListener('keydown', handleKeyDown)
-		document.addEventListener('keyup', handleKeyUp)
-		return () => {
-			document.removeEventListener('keydown', handleKeyDown)
-			document.removeEventListener('keyup', handleKeyUp)
-		}
-	}, [handleKeyDown, handleKeyUp])
-
-	return actions
+		if (action) useKeyboardStore.setState({ [action]: false })
+	})
 }
+
+// Backwards-compatible hook
+export const useKeyboard = useKeyboardStore

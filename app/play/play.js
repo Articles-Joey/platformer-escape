@@ -12,7 +12,7 @@ import Script from 'next/script'
 
 import ArticlesButton from '@/components/UI/Button';
 
-import useFullscreen from '@/hooks/useFullScreen';
+import useFullscreen from '@articles-media/articles-dev-box/useFullscreen';
 import { useControllerStore } from '@/hooks/useControllerStore';
 // import ControllerPreview from '@/components/Games/ControllerPreview';
 // import { useGameStore } from '@/components/Games/Ocean Rings/hooks/useGameStore';
@@ -180,9 +180,9 @@ export default function GamePage() {
             </div>
 
             <div className={`mobile-menu ${showMenu && 'show'}`}>
-                <LeftPanelContent
-                    {...panelProps}
-                />
+
+                <LeftPanelContent />
+                
             </div>
 
             {/* <TouchControls
@@ -191,9 +191,7 @@ export default function GamePage() {
 
             <div className='panel-left card rounded-0 d-none d-lg-flex'>
 
-                <LeftPanelContent
-                    {...panelProps}
-                />
+                <LeftPanelContent />
 
             </div>
 

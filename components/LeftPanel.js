@@ -11,21 +11,42 @@ import { useSocketStore } from "@/hooks/useSocketStore";
 // import { useEffect, useRef } from "react";
 // import { useHotkeys } from "react-hotkeys-hook";
 import { useGameStore } from "@/hooks/useGameStore";
+import { useStore } from "@/hooks/useStore";
+import { useSearchParams } from "next/navigation";
+
+import useFullscreen from '@articles-media/articles-dev-box/useFullscreen';
 
 export default function LeftPanelContent(props) {
 
+    const searchParams = useSearchParams()
+    const params = Object.fromEntries(searchParams.entries());
+    const { server } = params
+
+    const { isFullscreen, requestFullscreen, exitFullscreen } = useFullscreen();
+
+    const touchControlsEnabled = false;
+    const reloadScene = () => {
+        console.log("Reload scene");
+    };
+    const controllerState = {};
+
     const {
-        server,
+        // server,
         // players,
-        touchControlsEnabled,
-        setTouchControlsEnabled,
-        reloadScene,
-        controllerState,
-        isFullscreen,
-        requestFullscreen,
-        exitFullscreen,
-        setShowMenu
+        // touchControlsEnabled,
+        // setTouchControlsEnabled,
+        // reloadScene,
+        // controllerState,
+        // isFullscreen,
+        // requestFullscreen,
+        // exitFullscreen,
+        // setShowMenu
     } = props;
+
+    const sidebar = useStore(state => state.sidebar);
+    const toggleSidebar = useStore(state => state.toggleSidebar);
+    const toggleDarkMode = useStore(state => state.toggleDarkMode);
+    const setShowSettingsModal = useStore(state => state.setShowSettingsModal);
 
     const {
         score
@@ -74,35 +95,74 @@ export default function LeftPanelContent(props) {
                         </div>
                     } */}
 
-                    <Link
-                        href={'/'}
-                        className=""
-                    >
-                        <ArticlesButton
-                            className='w-50'
-                            small
-                        >
-                            <i className="fad fa-arrow-alt-square-left"></i>
-                            <span>Leave Game</span>
-                        </ArticlesButton>
-                    </Link>
+                    <div className="d-flex flex-wrap">
 
-                    <ArticlesButton
-                        small
-                        className="w-50"
-                        active={isFullscreen}
-                        onClick={() => {
-                            if (isFullscreen) {
-                                exitFullscreen()
-                            } else {
-                                requestFullscreen('game-page')
-                            }
-                        }}
-                    >
-                        {isFullscreen && <span>Exit </span>}
-                        {!isFullscreen && <span><i className='fad fa-expand'></i></span>}
-                        <span>Fullscreen</span>
-                    </ArticlesButton>
+                        <Link
+                            href={'/'}
+                            className="w-50"
+                        >
+                            <ArticlesButton
+                                className='w-100'
+                                small
+                            >
+                                <i className="fad fa-arrow-alt-square-left"></i>
+                                <span>Leave Game</span>
+                            </ArticlesButton>
+                        </Link>
+    
+                        <ArticlesButton
+                            small
+                            className="w-50"
+                            active={isFullscreen}
+                            onClick={() => {
+                                if (isFullscreen) {
+                                    exitFullscreen()
+                                } else {
+                                    requestFullscreen('game-page')
+                                }
+                            }}
+                        >
+                            {isFullscreen && <span>Exit </span>}
+                            {!isFullscreen && <span><i className='fad fa-expand'></i></span>}
+                            <span>Fullscreen</span>
+                        </ArticlesButton>
+    
+                        <div className="d-flex w-50">
+                            <ArticlesButton
+                                className={`w-100`}
+                                small
+                                onClick={() => {
+                                    setShowSettingsModal(prev => !prev)
+                                }}
+                            >
+                                <i className="fad fa-cog"></i>
+                                Settings
+                            </ArticlesButton>
+                            <ArticlesButton
+                                className={``}
+                                small
+                                onClick={() => {
+                                    toggleDarkMode()
+                                }}
+                            >
+                                <i className="fad fa-moon"></i>
+                                {/* Dark Mode */}
+                            </ArticlesButton>
+                        </div>
+    
+                        <ArticlesButton
+                            small
+                            className='w-50'
+                            active={sidebar}
+                            onClick={() => {
+                                toggleSidebar()
+                            }}
+                        >
+                            <i className="fad fa-cog"></i>
+                            <span>Sidebar</span>
+                        </ArticlesButton>
+
+                    </div>
 
                 </div>
             </div>
