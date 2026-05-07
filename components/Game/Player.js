@@ -1,6 +1,6 @@
 import { useFrame, useThree } from "@react-three/fiber"
-import { RigidBody, CapsuleCollider, useRapier } from "@react-three/rapier"
-import { memo, useRef, useState } from "react"
+import { RigidBody, CapsuleCollider, useRapier, BallCollider } from "@react-three/rapier"
+import { memo, useRef, useState, useEffect, useCallback } from "react"
 import { Vector3 } from "three"
 
 import { useKeyboardStore } from "@/hooks/useKeyboard"
@@ -8,6 +8,7 @@ import { Model as ModelKingMen } from "@/components/Models/King";
 import { useControlsStore, useGameStore } from "@/hooks/useGameStore";
 import { degToRad } from "three/src/math/MathUtils";
 import { Text } from "@react-three/drei";
+import { useStore } from "@/hooks/useStore"
 
 const JUMP_FORCE = 20;
 const SPEED = 12;
@@ -28,6 +29,38 @@ function myToFixed(i, digits) {
     return Math.floor(i * pow) / pow;
 }
 
+const PROJECTILE_SPEED = 30;
+
+function Projectile({ id, startPos, dir, onExpire }) {
+    const rbRef = useRef()
+    const birthTime = useRef(Date.now())
+    const expired = useRef(false)
+
+    useEffect(() => {
+        const rb = rbRef.current
+        if (rb) {
+            rb.setLinvel({ x: dir.x * PROJECTILE_SPEED, y: dir.y * PROJECTILE_SPEED, z: 0 }, true)
+        }
+    }, [])
+
+    useFrame(() => {
+        if (!expired.current && Date.now() - birthTime.current > 5000) {
+            expired.current = true
+            onExpire(id)
+        }
+    })
+
+    return (
+        <RigidBody ref={rbRef} position={startPos} gravityScale={0} ccd>
+            <BallCollider args={[0.15]} />
+            <mesh>
+                <sphereGeometry args={[0.15]} />
+                <meshStandardMaterial color="red" emissive="red" emissiveIntensity={1} />
+            </mesh>
+        </RigidBody>
+    )
+}
+
 function Player(props) {
 
     const rigidBodyRef = useRef()
@@ -35,13 +68,75 @@ function Player(props) {
     const lastMoveRef = useRef("Right")
     const actionRef = useRef("Idle")
 
+    const debug = useStore(state => state.debug)
+
     // These only update when the value actually changes (infrequent),
     // triggering a re-render to update the model's animation/rotation.
     const [lastMove, setLastMove] = useState("Right");
     const [action, setAction] = useState("Idle")
+    const [projectiles, setProjectiles] = useState([])
+    const [repeatFire, setRepeatFire] = useState(true)
+    const lastFireInfo = useRef(null)
 
-    const { camera } = useThree()
+    const { camera, gl } = useThree()
     const { rapier, world } = useRapier()
+
+    const handleProjectileExpire = useCallback((id) => {
+        setProjectiles(prev => prev.filter(p => p.id !== id))
+    }, [])
+
+    useEffect(() => {
+        const canvas = gl.domElement
+
+        const fire = (worldPos) => {
+            const rb = rigidBodyRef.current
+            if (!rb) return
+
+            const playerPos = rb.translation()
+            const dx = worldPos.x - playerPos.x
+            const dy = worldPos.y - playerPos.y
+            const len = Math.sqrt(dx * dx + dy * dy) || 1
+
+            setProjectiles(prev => [...prev, {
+                id: Date.now() + Math.random(),
+                startPos: [playerPos.x, playerPos.y + 1, 0],
+                dir: { x: dx / len, y: dy / len }
+            }])
+
+            // Play shooting animation for 0.25 seconds
+            actionRef.current = "Idle_Gun_Shoot"
+            setAction("Idle_Gun_Shoot")
+            setTimeout(() => {
+                // Return to Idle (or it will be updated by next useFrame anyway)
+                if (actionRef.current === "Idle_Gun_Shoot") {
+                    actionRef.current = "Idle"
+                    setAction("Idle")
+                }
+            }, 250)
+        }
+
+        const handleClick = (event) => {
+            const rb = rigidBodyRef.current
+            if (!rb) return
+
+            const rect = canvas.getBoundingClientRect()
+            const ndcX = ((event.clientX - rect.left) / rect.width) * 2 - 1
+            const ndcY = -((event.clientY - rect.top) / rect.height) * 2 + 1
+
+            // Unproject screen point through camera to the Z=0 world plane
+            const vec = new Vector3(ndcX, ndcY, 0.5)
+            vec.unproject(camera)
+            const dir = vec.sub(camera.position).normalize()
+            const t = -camera.position.z / dir.z
+            const worldPos = camera.position.clone().addScaledVector(dir, t)
+
+            lastFireInfo.current = worldPos
+            fire(worldPos)
+        }
+
+        canvas.addEventListener('click', handleClick)
+        return () => canvas.removeEventListener('click', handleClick)
+    }, [camera, gl])
 
     const isGrounded = () => {
         const rb = rigidBodyRef.current
@@ -62,7 +157,7 @@ function Player(props) {
             const rb = rigidBodyRef.current
             if (!rb) return
             rb.setLinvel({ x: 0, y: 0, z: 0 }, true)
-            rb.setTranslation({ x: 0, y: 10, z: 0 }, true)
+            rb.setTranslation({ x: 0, y: 20, z: 0 }, true)
         }
 
         if (otherData?.isStar) {
@@ -71,9 +166,44 @@ function Player(props) {
         }
     }
 
+    const lastFireTime = useRef(0)
+
     useFrame(() => {
         const rb = rigidBodyRef.current
         if (!rb) return
+
+        // Auto-firing logic
+        if (repeatFire && lastFireInfo.current) {
+            const now = Date.now()
+            if (now - lastFireTime.current > 500) { // Shoot every 500ms
+                lastFireTime.current = now
+                
+                const playerPos = rb.translation()
+                const worldPos = lastFireInfo.current
+                const dx = worldPos.x - playerPos.x
+                const dy = worldPos.y - playerPos.y
+                const len = Math.sqrt(dx * dx + dy * dy) || 1
+
+                setProjectiles(prev => [...prev, {
+                    id: Date.now() + Math.random(),
+                    startPos: [playerPos.x, playerPos.y + 1, 0],
+                    dir: { x: dx / len, y: dy / len }
+                }])
+
+                // Play shooting animation
+                if (actionRef.current !== "Idle_Gun_Shoot") {
+                    const prevAction = actionRef.current
+                    actionRef.current = "Idle_Gun_Shoot"
+                    setAction("Idle_Gun_Shoot")
+                    setTimeout(() => {
+                        if (actionRef.current === "Idle_Gun_Shoot") {
+                            actionRef.current = prevAction
+                            setAction(prevAction)
+                        }
+                    }, 250)
+                }
+            }
+        }
 
         // Read all state imperatively — no React subscriptions, no re-renders
         const kb = useKeyboardStore.getState()
@@ -86,7 +216,7 @@ function Player(props) {
         // Fall reset
         if (pos.y < -15) {
             rb.setLinvel({ x: 0, y: 0, z: 0 }, true)
-            rb.setTranslation({ x: 0, y: 10, z: 0 }, true)
+            rb.setTranslation({ x: 0, y: 20, z: 0 }, true)
             camera.lookAt(0, 0, -50);
             return
         }
@@ -102,17 +232,30 @@ function Player(props) {
 
         if (movingRight) {
             if (lastMoveRef.current !== "Right") { lastMoveRef.current = "Right"; setLastMove("Right") }
-            if (actionRef.current !== "Walk") { actionRef.current = "Walk"; setAction("Walk") }
+            if (actionRef.current !== "Walk" && actionRef.current !== "Idle_Gun_Shoot") { 
+                actionRef.current = "Walk"; 
+                setAction("Walk") 
+            }
         } else if (movingLeft) {
             if (lastMoveRef.current !== "Left") { lastMoveRef.current = "Left"; setLastMove("Left") }
-            if (actionRef.current !== "Walk") { actionRef.current = "Walk"; setAction("Walk") }
+            if (actionRef.current !== "Walk" && actionRef.current !== "Idle_Gun_Shoot") { 
+                actionRef.current = "Walk"; 
+                setAction("Walk") 
+            }
         } else {
-            if (actionRef.current !== "Idle") { actionRef.current = "Idle"; setAction("Idle") }
+            if (actionRef.current !== "Idle" && actionRef.current !== "Idle_Gun_Shoot") { 
+                actionRef.current = "Idle"; 
+                setAction("Idle") 
+            }
         }
 
         // Camera follow (reuse pre-allocated vectors)
         if (gs.cameraMode === "Player") {
-            _cameraPos.set(pos.x, pos.y + 8, 50)
+            _cameraPos.set(
+                pos.x, 
+                pos.y + 0, 
+                30
+            )
             camera.position.copy(_cameraPos)
             _cameraTarget.set(pos.x, pos.y, 0)
             camera.lookAt(_cameraTarget)
@@ -192,26 +335,44 @@ function Player(props) {
                 userData={{ isPlayer: true }}
                 onCollisionEnter={handleCollision}
             >
-                <CapsuleCollider args={[1.75, 1.1]} />
+                <CapsuleCollider args={[1.75, 0.8]} />
             </RigidBody>
 
             <group ref={playerModelRef}>
 
-                <Text position={[0, 5, 0]}>
-                    {action}
-                </Text>
+                {debug &&
+                    <group>
+                        <Text position={[0, 6, 0]} fontSize={0.5} color="white" onClick={() => setRepeatFire(!repeatFire)}>
+                            {`RepeatFire: ${repeatFire ? "ON" : "OFF"}`}
+                        </Text>
+                        <Text position={[0, 5, 0]}>
+                            {action}
+                        </Text>
+                    </group>
+                }
 
                 <ModelKingMen
-                    scale={3}
+                    // scale={3}
+                    scale={2.5}
                     rotation={[
                         0,
                         lastMove == "Right" ? degToRad(90) : degToRad(-90),
                         0
                     ]}
-                    position={[0, -3.25, 0]}
+                    position={[0, -2.5, 0]}
                     action={action}
                 />
             </group>
+
+            {projectiles.map(p => (
+                <Projectile
+                    key={p.id}
+                    id={p.id}
+                    startPos={p.startPos}
+                    dir={p.dir}
+                    onExpire={handleProjectileExpire}
+                />
+            ))}
 
         </group>
     )

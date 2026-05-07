@@ -1,8 +1,8 @@
 # Platformer Escape
 
-![Preview]()
+![Preview](public/img/preview.webp)
 
-...
+R3F web platformer game.
 
 ## Getting Started
 
@@ -14,4 +14,4 @@ npm run dev
 
 ## Multiplayer
 
-Aiming to have multiplayer via P2P and Websockets. Websocket backend code is not in this repo or available at this time. P2P code will be included here.
+Websocket backend code is not in this repo or available at this time. P2P code will be included here.

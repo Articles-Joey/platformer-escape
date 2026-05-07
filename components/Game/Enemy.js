@@ -1,11 +1,12 @@
 import { Model as ModelSpaceMen } from "@/components/Models/Spacesuit";
-import { RigidBody, CuboidCollider } from "@react-three/rapier";
+import { RigidBody, CuboidCollider, CapsuleCollider } from "@react-three/rapier";
 import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import { degToRad } from "three/src/math/MathUtils";
 
 function Enemy({ args, position }) {
     const rigidBodyRef = useRef();
+    const modelRef = useRef();
     const directionRef = useRef(1);
     const speed = 3;
     const originalX = useRef(position[0]);
@@ -27,23 +28,34 @@ function Enemy({ args, position }) {
             y: pos.y,
             z: pos.z,
         });
+
+        if (modelRef.current) {
+            modelRef.current.position.set(pos.x, pos.y, pos.z);
+            modelRef.current.rotation.y = directionRef.current === 1 ? Math.PI / 2 : -Math.PI / 2;
+        }
     });
 
     return (
-        <RigidBody
-            ref={rigidBodyRef}
-            type="kinematicPosition"
-            position={position}
-            userData={{ isEnemy: true }}
-        >
-            <CuboidCollider args={[0.5, 2, 0.5]} />
-            <ModelSpaceMen
-                scale={3}
-                rotation={[0, Math.PI / 2, 0]}
-                position={[0, -2, 0]}
-                action="Walk"
-            />
-        </RigidBody>
+        <group>
+            <RigidBody
+                ref={rigidBodyRef}
+                type="kinematicPosition"
+                position={position}
+                userData={{ isEnemy: true }}
+            >
+                <CapsuleCollider args={[1.75, 0.8]} />
+
+            </RigidBody>
+            <group
+                ref={modelRef}
+            >
+                <ModelSpaceMen
+                    scale={2.5}
+                    position={[0, -2, 0]}
+                    action="Walk"
+                />
+            </group>
+        </group>
     );
 }
 

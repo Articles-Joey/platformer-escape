@@ -2,26 +2,18 @@
 import { useEffect, useContext, useState, useRef, useMemo } from 'react';
 
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import Link from 'next/link';
 import dynamic from 'next/dynamic'
-import Script from 'next/script'
 
-// import { useSelector, useDispatch } from 'react-redux'
+import { useControllerStore } from '@/hooks/useControllerStore';
 
-// import ROUTES from '@/components/constants/routes';
-
-import ArticlesButton from '@/components/UI/Button';
+import LeftPanelContent from '@/components/UI/LeftPanel';
+import { useSocketStore } from '@/hooks/useSocketStore';
+import { useStore } from '@/hooks/useStore';
+import classNames from 'classnames';
 
 import useFullscreen from '@articles-media/articles-dev-box/useFullscreen';
-import { useControllerStore } from '@/hooks/useControllerStore';
-// import ControllerPreview from '@/components/Games/ControllerPreview';
-// import { useGameStore } from '@/components/Games/Ocean Rings/hooks/useGameStore';
-// import { Dropdown, DropdownButton } from 'react-bootstrap';
-// import TouchControls from 'app/(site)/community/games/glass-ceiling/components/UI/TouchControls';
-import { useLocalStorageNew } from '@/hooks/useLocalStorageNew';
-import LeftPanelContent from '@/components/LeftPanel';
-import { useSocketStore } from '@/hooks/useSocketStore';
-
+import GameMenu from '@articles-media/articles-dev-box/GameMenu';
+import { useHotkeys } from 'react-hotkeys-hook';
 const GameCanvas = dynamic(() => import('@/components/Game/GameCanvas'), {
     ssr: false,
 });
@@ -34,18 +26,19 @@ export default function GamePage() {
         socket: state.socket
     }));
 
-    const router = useRouter()
-    const pathname = usePathname()
+    // const router = useRouter()
+    // const pathname = usePathname()
     const searchParams = useSearchParams()
     const params = Object.fromEntries(searchParams.entries());
     const { server } = params
 
-    const { controllerState, setControllerState } = useControllerStore()
-    const [showControllerState, setShowControllerState] = useState(false)
+    const sceneKey = useStore(state => state.sceneKey)
+    const menuOpen = useStore(state => state.menuOpen)
+    const sidebar = useStore(state => state.sidebar)
 
-    // const [ cameraMode, setCameraMode ] = useState('Player')
-
-    const [players, setPlayers] = useState([])
+    useHotkeys('R', () => {
+        useStore.getState().reloadScene();
+    }, []);
 
     useEffect(() => {
 
@@ -64,153 +57,37 @@ export default function GamePage() {
 
     }, [server, socket.connected]);
 
-    const [showMenu, setShowMenu] = useState(false)
-
-    const [touchControlsEnabled, setTouchControlsEnabled] = useLocalStorageNew("game:touchControlsEnabled", false)
-
-    const [sceneKey, setSceneKey] = useState(0);
-
-    const [gameState, setGameState] = useState(false)
-
-    // Function to handle scene reload
-    const reloadScene = () => {
-        setSceneKey((prevKey) => prevKey + 1);
-    };
-
-    const { isFullscreen, requestFullscreen, exitFullscreen } = useFullscreen();
-
-    let panelProps = {
-        server,
-        players,
-        touchControlsEnabled,
-        setTouchControlsEnabled,
-        reloadScene,
-        // controllerState,
-        isFullscreen,
-        requestFullscreen,
-        exitFullscreen,
-        setShowMenu
-    }
-
-    const game_name = 'Platformer Escape'
-    const game_key = 'platformer-escape'
-
-    const holdTimer = useRef(null);
-
-    const handleHoldStart = (direction) => {
-        console.log(`Hold started: ${direction}`);
-
-        // Start a repeated action on hold
-        holdTimer.current = setInterval(() => {
-
-            console.log(`Holding: ${direction}`);
-            
-            // Replace with your desired action
-        }, 100); // Interval in milliseconds
-    };
-
-    const handleHoldEnd = () => {
-        console.log("Hold ended");
-        clearInterval(holdTimer.current); // Clear the interval
-    };
 
     return (
 
         <div
-            className={`platformer-escape-game-page ${isFullscreen && 'fullscreen'}`}
-            id="game-page"
+            className={classNames(
+                `${process.env.NEXT_PUBLIC_GAME_KEY}-game-page`,
+                {
+                    'menu-open': menuOpen,
+                    'fullscreen': useFullscreen().isFullscreen,
+                    'show-sidebar': sidebar,
+                }
+            )}
+            id={`${process.env.NEXT_PUBLIC_GAME_KEY}-game-page`}
         >
 
-            <div className="menu-bar card card-articles p-1 justify-content-center">
-
-                <div className='flex-header align-items-center'>
-
-                    <div>
-                        <ArticlesButton
-                            small
-                            active={showMenu}
-                            onClick={() => {
-                                setShowMenu(prev => !prev)
-                            }}
-                        >
-                            <i className="fad fa-bars"></i>
-                            <span>Menu</span>
-                        </ArticlesButton>
-                        <ArticlesButton
-                            small
-                            className="px-4"
-                            // active={showMenu}
-                            onClick={() => {
-
-                            }}
-                        >
-                            <i className="fad fa-arrow-up"></i>
-                            Jump
-                        </ArticlesButton>
-                    </div>
-
-                    <div>
-
-                        <ArticlesButton
-                            small
-                            onMouseDown={() => handleHoldStart("left")}
-                            // onTouchStart={() => handleHoldStart("left")} // For touch
-                            onMouseUp={handleHoldEnd}
-                            // onTouchEnd={handleHoldEnd} // For touch
-                            onMouseLeave={handleHoldEnd} // Handles case where mouse leaves the button
-                        >
-                            <i className="fad fa-arrow-left me-0 px-3"></i>
-                        </ArticlesButton>
-
-                        <ArticlesButton
-                            small
-                            onMouseDown={() => handleHoldStart("right")}
-                            // onTouchStart={() => handleHoldStart("right")} // For touch
-                            onMouseUp={handleHoldEnd}
-                            // onTouchEnd={handleHoldEnd} // For touch
-                            onMouseLeave={handleHoldEnd}
-                        >
-                            <i className="fad fa-arrow-right me-0 px-3"></i>
-                        </ArticlesButton>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-            <div className={`mobile-menu ${showMenu && 'show'}`}>
-
-                <LeftPanelContent />
-                
-            </div>
-
-            {/* <TouchControls
-                touchControlsEnabled={touchControlsEnabled}
-            /> */}
-
-            <div className='panel-left card rounded-0 d-none d-lg-flex'>
-
-                <LeftPanelContent />
-
-            </div>
-
-            {/* <div className='game-info'>
-                <div className="card card-articles card-sm">
-                    <div className="card-body">
-                        <pre> 
-                            {JSON.stringify(playerData, undefined, 2)}
-                        </pre>
-                    </div>
-                </div>
-            </div> */}
+            <GameMenu
+                useStore={useStore}
+                LeftPanelContent={LeftPanelContent}
+                menuBarConfig={{
+                    style: "Corner Button",
+                    menuBarButtonPosition: "Left"
+                }}
+                sidebarConfig={{
+                    style: "Static Panel",
+                }}
+            />
 
             <div className='canvas-wrap'>
 
                 <GameCanvas
                     key={sceneKey}
-                    // gameState={gameState}
-                    // players={players}
                 />
 
             </div>
