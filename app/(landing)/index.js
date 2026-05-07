@@ -154,9 +154,9 @@ export default function LobbyPage() {
                         src={`img/preview.webp`}
                         alt=""
                         fill
-                        style={{ 
-                            objectFit: 'cover', 
-                            objectPosition: 'center', 
+                        style={{
+                            objectFit: 'cover',
+                            objectPosition: 'center',
                             filter: 'blur(3px)',
                             transform: 'scale(1.05)'
                         }}
@@ -169,18 +169,36 @@ export default function LobbyPage() {
                 <div
                     style={{ "width": "20rem" }}
                 >
+
+                    <div
+                        style={{ position: 'relative' }}
+                        className="mb-3"
+                    >
+
+                        {toontownMode ?
+                            <img
+                                src={'img/toontown-icon.webp'}
+                                alt=""
+                                className='d-block mx-auto mb-0'
+                                width={200}
+                                style={{ objectFit: 'cover' }}
+                            />
+                            :
+                            <img
+                                src={'img/icon.webp'}
+                                alt=""
+                                className='d-block mx-auto mb-0'
+                                width={200}
+                                style={{ objectFit: 'cover' }}
+                            />}
+
+                        <h1 className="text-center mb-1">Platformer Escape</h1>
+
+                    </div>
+
                     <div
                         className="card card-articles card-sm mb-3"
                     >
-
-                        {/* <div style={{ position: 'relative', height: '200px' }}>
-                            <Image
-                                src={Logo}
-                                alt=""
-                                fill
-                                style={{ objectFit: 'cover' }}
-                            />
-                        </div> */}
 
                         <div className='card-header d-flex align-items-center'>
 
