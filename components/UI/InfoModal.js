@@ -1,84 +1,44 @@
-import { useEffect, useState, useRef } from "react";
+"use client";
 
-import { Modal } from "react-bootstrap"
-
+import { useRef, useState } from "react";
+import Box from "@mui/material/Box";
+import ArticlesModal from "./ArticlesModal";
 import ArticlesButton from "./Button";
 import { useModalNavigation } from "@/hooks/useModalNavigation";
-
 import B from "@articles-media/articles-gamepad-helper/dist/img/Xbox UI/B.svg";
-import { useStore } from "@/hooks/useStore";
 
-export default function InfoModal({
-    show,
-    setShow,
-    credits
-}) {
-
-    const [showModal, setShowModal] = useState(true)
-
-    const darkMode = useStore(state => state.darkMode)
-
+export default function InfoModal({ show = true, setShow }) {
+    const [showModal, setShowModal] = useState(true);
     const elementsRef = useRef([]);
     useModalNavigation(elementsRef, () => setShowModal(false));
 
     return (
-        <>
-
-            <Modal
-                className="articles-modal games-info-modal"
-                size='md'
-                show={showModal}
-                centered
-                scrollable
-                onExited={() => {
-                    setShow(false)
-                }}
-                onHide={() => {
-                    setShowModal(false)
-                }}
-            >
-
-                <Modal.Header closeButton>
-                    <Modal.Title>Game Info</Modal.Title>
-                </Modal.Header>
-
-                <Modal.Body className="flex-column p-0">
-
-                    <div className="ratio ratio-16x9">
-                        {darkMode ?
-                            <img src={"img/preview.webp"}></img>
-                            :
-                            <img src={"img/preview.webp"}></img>
-                        }
-                    </div>
-
-                    <div className="p-3">
-                        R3F web platformer game.
-                    </div>
-
-                </Modal.Body>
-
-                <Modal.Footer className="justify-content-between">
-
-                    <div></div>
-
+        <ArticlesModal
+            title="Game Info"
+            show={show && showModal}
+            setShow={(visible) => {
+                setShow(visible);
+                setShowModal(true);
+            }}
+            contentSx={{ p: 0 }}
+            footerOverride={(setOpen) => (
+                <>
+                    <Box />
                     <ArticlesButton
-                        ref={el => elementsRef.current[0] = el}
+                        ref={(el) => { elementsRef.current[0] = el; }}
                         variant="outline-dark"
-                        onClick={() => {
-                            setShow(false)
-                        }}
-                        className="d-flex align-items-center"
+                        onClick={() => setOpen(false)}
+                        startIcon={<Box component="img" src={B.src} className="controller-only" alt="" sx={{ width: 24 }} />}
                     >
-                        <img src={B.src} className="controller-only me-1" alt="Close" />
                         Close
                     </ArticlesButton>
-
-                </Modal.Footer>
-
-            </Modal>
-
-        </>
-    )
-
+                </>
+            )}
+        >
+            <Box sx={{ position: "relative", aspectRatio: "16 / 9", "& img": { width: "100%", height: "100%", objectFit: "cover" } }}>
+                <Box component="img" src="/img/preview.webp" alt="Platformer Escape preview" />
+            </Box>
+            <Box sx={{ p: "1rem" }}>R3F web platformer game.</Box>
+        </ArticlesModal>
+    );
 }

@@ -1,52 +1,34 @@
+"use client";
+
+import Box from "@mui/material/Box";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Typography from "@mui/material/Typography";
+import ReplayIcon from "@mui/icons-material/Replay";
 import { useGameStore } from "@/hooks/useGameStore";
 import { useStore } from "@/hooks/useStore";
 import ArticlesButton from "./Button";
 
 export default function DebugPanel() {
-
     const reloadScene = useStore((state) => state.reloadScene);
-
     const score = useGameStore((state) => state.score);
-    const setScore = useGameStore((state) => state.setScore);
 
     return (
-        <div
-            className="card card-articles card-sm"
-        >
-            <div className="card-body">
-
-                <div className="small text-muted">Debug Controls</div>
-
-                <div className="small border p-2">
-                    <div>Score: {score}</div>
-                </div>
-
-                <div className='d-flex flex-column'>
-
-                    <div>
-                        <ArticlesButton
-                            size="sm"
-                            className="w-50"
-                            onClick={() => reloadScene()}
-                        >
-                            <i className="fad fa-redo"></i>
+        <Card sx={{ bgcolor: "game.card", backgroundImage: "none", fontSize: "0.875rem", border: 1, borderColor: "divider" }}>
+            <CardContent sx={{ p: 1, "&:last-child": { pb: 1 } }}>
+                <Typography sx={{ fontSize: "0.875em", color: "text.secondary" }}>Debug Controls</Typography>
+                <Box sx={{ fontSize: "0.875em", border: 1, borderColor: "divider", p: "0.5rem" }}>Score: {score}</Box>
+                <Box sx={{ display: "flex", flexDirection: "column" }}>
+                    <Box sx={{ display: "flex" }}>
+                        <ArticlesButton small sx={{ width: "50%" }} onClick={() => reloadScene()} startIcon={<ReplayIcon />}>
                             Reload Game
                         </ArticlesButton>
-
-                        <ArticlesButton
-                            size="sm"
-                            className="w-50"
-                            onClick={() => reloadScene()}
-                        >
-                            <i className="fad fa-redo"></i>
+                        <ArticlesButton small sx={{ width: "50%" }} onClick={() => reloadScene()} startIcon={<ReplayIcon />}>
                             Reset Camera
                         </ArticlesButton>
-                    </div>
-
-                </div>
-
-            </div>
-        </div>
-    )
-
+                    </Box>
+                </Box>
+            </CardContent>
+        </Card>
+    );
 }
